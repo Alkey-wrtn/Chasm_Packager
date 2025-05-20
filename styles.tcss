@@ -1,0 +1,30 @@
+#log-box {
+  height: 1fr;
+  border: solid white;
+  color: white;
+  background: black;
+}
+
+Log {
+  color: white;
+}
+
+#green {
+  color: green;
+}
+
+Log .yellow {
+  color: yellow;
+}
+
+Log .red {
+  color: red;
+}
+
+Log .bold {
+  text-style: bold;
+}
+
+Log .bright_blue {
+  color: rgb(30, 144, 255); /* dodger blue */
+}

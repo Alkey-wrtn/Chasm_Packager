@@ -2,6 +2,7 @@ import json
 import shutil
 import requests
 import traceback
+from PIL import Image
 from pathlib import Path
 from tkinter import Tk, filedialog
 
@@ -10,9 +11,10 @@ from textual.app import App, ComposeResult
 from textual.widgets import Header, Footer, Button, Label, Log
 from textual.containers import Vertical, Horizontal
 from textual.reactive import reactive
+from textual_imageview.viewer import ImageViewer
 
 class ChasmPackager(App):
-  CSS_PATH = None
+  CSS_PATH = "styles.tcss"
 
   json_path = reactive("")
   save_path = reactive("")
@@ -21,12 +23,19 @@ class ChasmPackager(App):
     yield Header()
     with Horizontal(id="main"):
       with Vertical(id="controls"):
-        yield Label("📁 JSON 파일과 저장할 폴더를 선택하세요.")
+        yield Label("📁 JSON 파일과 저장할 폴더를 선택해주세요.")
+        yield Label(" ")
         yield Button("🔍 JSON 파일 선택", id="select-json", variant="primary")
-        yield Label("(선택 전)", id="json-label")
-        yield Button("📂 저장 폴더 선택", id="select-dir", variant="primary")
-        yield Label("(선택 전)", id="dir-label")
+        yield Label("(JSON 파일이 선택되지 않았습니다.)", id="json-label")
+        yield Label(" ")
+        yield Button("📂 저장될 폴더 선택", id="select-dir", variant="primary")
+        yield Label("(저장될 폴더가 선택되지 않았습니다.)", id="dir-label")
+        yield Label(" ")
         yield Button("✅ 실행", id="run-btn", variant="success")
+        yield Label(" ")
+        yield Label(" ")
+        yield Label("🔶 ChasmPackager v1.0.0 - By Alkey\n🔶 오류나 추가 기능 문의가 있다면 Discord: crk_alkey로 문의 부탁드려요!", id="green")
+        yield ImageViewer(Image.open(Path("chibialkey.png")))
       yield Log(id="log-box")
     yield Footer()
 
@@ -38,29 +47,29 @@ class ChasmPackager(App):
         if path:
           self.json_path = path
           self.query_one("#json-label", Label).update(Path(path).name)
-          log.write(f"[green]JSON 파일 선택됨: {path}[/green]\n")
+          log.write(f"🟢 JSON 파일 선택됨: {path}\n")
 
       elif event.button.id == "select-dir":
         path = self.open_folder_dialog()
         if path:
           self.save_path = path
           self.query_one("#dir-label", Label).update(Path(path).name)
-          log.write(f"[green]저장 폴더 선택됨: {path}[/green]\n")
+          log.write(f"🟢 저장 폴더 선택됨: {path}\n")
 
       elif event.button.id == "run-btn":
         if not self.json_path:
-          log.write("[red]JSON 파일을 먼저 선택하세요.[/red]\n")
+          log.write("🔴 JSON 파일을 먼저 선택하세요.\n")
           return
         if not Path(self.json_path).is_file():
-          log.write("[red]올바른 JSON 파일을 선택하세요.[/red]\n")
+          log.write("🔴 올바른 JSON 파일을 선택하세요.\n")
           return
         if not self.save_path:
-          log.write("[red]저장 폴더를 먼저 선택하세요.[/red]\n")
+          log.write("🔴 저장 폴더를 먼저 선택하세요.\n")
           return
         json_text = Path(self.json_path).read_text(encoding="utf-8")
         self.process_json(json_text, self.save_path)
     except Exception:
-      log.write(f"[bold red]UI 처리 중 예외:\n{traceback.format_exc()}[/bold red]\n")
+      log.write(f"❌ UI 처리 중 예외:\n{traceback.format_exc()}\n")
 
   def open_file_dialog(self) -> str:
     root = Tk(); root.withdraw()
@@ -74,24 +83,24 @@ class ChasmPackager(App):
 
   def process_json(self, json_text: str, save_dir: str):
     log = self.query_one(Log)
-    def l(msg: str, style: str = None):
+    def l(msg: str, style: str = None): # type: ignore
       tag = f"[{style}]" if style else ""
       end = f"[/{style}]" if style else ""
       log.write(f"{tag}{msg}{end}\n")
 
     try:
       data = json.loads(json_text)
-      l("JSON 파싱 성공", "green")
+      l("🟢 JSON 파싱 성공")
     except json.JSONDecodeError as e:
-      l(f"파싱 오류: {e}. 후행 데이터 무시 시도", "yellow")
+      l(f"🟡 파싱 오류: {e}. 후행 데이터 무시 시도")
       try:
         data, _ = json.JSONDecoder().raw_decode(json_text)
-        l("후행 데이터 제거 후 파싱 성공", "yellow")
+        l("🟡 후행 데이터 제거 후 파싱 성공")
       except Exception as e2:
-        l(f"JSON 파싱 실패: {e2}", "red")
+        l(f"🔴 JSON 파싱 실패: {e2}")
         return
     except Exception as e:
-      l(f"알 수 없는 파싱 에러: {e}", "red")
+      l(f"🔴 알 수 없는 파싱 에러: {e}")
       return
 
     try:
@@ -101,7 +110,7 @@ class ChasmPackager(App):
 
       def write(path: Path, content: str, label: str):
         path.write_text(content, encoding="utf-8")
-        l(f"{label} 저장: {path.name}")
+        l(f"✅ {label} 저장: {path.name}")
 
       # 1. 설명 저장
       write(base_dir / "1. 설명.txt", data.get("description", ""), "설명")
@@ -114,18 +123,23 @@ class ChasmPackager(App):
       init = data.get("initialMessages", [])
       default = data.get("defaultStartingSetSituationPrompt", "")
       replies = data.get("replySuggestions", [])
+      dialogues_dir = base_dir / "대화상황"
+      dialogues_dir.mkdir(exist_ok=True)
+
       if init:
-        d1 = base_dir / "대화상황1"; d1.mkdir(exist_ok=True)
-        write(d1 / "대화상황프롬프트.txt", "\n\n".join(init), "대화상황1 메시지")
-        write(d1 / "시작상황프롬프트.txt", default, "대화상황1 시작")
-        write(d1 / "예시대화프롬프트.txt", "\n".join(replies), "대화상황1 예시")
+          d1 = dialogues_dir / "대화상황1"
+          d1.mkdir(exist_ok=True)
+          write(d1 / "대화상황프롬프트.txt", "\n\n".join(init), "대화상황1 메시지")
+          write(d1 / "시작상황프롬프트.txt", default, "대화상황1 시작")
+          write(d1 / "예시대화프롬프트.txt", "\n".join(replies), "대화상황1 예시")
 
       for idx, st in enumerate(data.get("startingSets", [])[:2], start=2):
-        d = base_dir / f"대화상황{idx}"; d.mkdir(exist_ok=True)
-        msgs = st.get("initialMessages", [])
-        write(d / "대화상황프롬프트.txt", "\n\n".join(msgs), f"대화상황{idx} 메시지")
-        write(d / "시작상황프롬프트.txt", st.get("situationPrompt", default), f"대화상황{idx} 시작")
-        write(d / "예시대화프롬프트.txt", "\n".join(st.get("replySuggestions", replies)), f"대화상황{idx} 예시")
+          d = dialogues_dir / f"대화상황{idx}"
+          d.mkdir(exist_ok=True)
+          msgs = st.get("initialMessages", [])
+          write(d / "대화상황프롬프트.txt", "\n\n".join(msgs), f"대화상황{idx} 메시지")
+          write(d / "시작상황프롬프트.txt", st.get("situationPrompt", default), f"대화상황{idx} 시작")
+          write(d / "예시대화프롬프트.txt", "\n".join(st.get("replySuggestions", replies)), f"대화상황{idx} 예시")
 
       # 4. chatExamples (대화 예시 저장)
       if data.get("chatExamples"):
@@ -183,9 +197,9 @@ class ChasmPackager(App):
       if data.get("tags"):
         write(base_dir / "3. 태그.txt", "\n".join(data["tags"]), "태그")
 
-      l(f"🎉 완료! 폴더 생성 위치: {base_dir}", "bold green")
+      l(f"🎉 완료! 폴더 생성 위치: {base_dir}")
     except Exception:
-      l(f"[오류] 처리 중 예외 발생:\n{traceback.format_exc()}", "bold red")
+      l(f"❌ [오류] 처리 중 예외 발생:\n{traceback.format_exc()}")
 
 if __name__ == "__main__":
   ChasmPackager().run()
