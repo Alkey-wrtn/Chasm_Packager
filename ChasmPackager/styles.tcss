@@ -13,7 +13,7 @@ Log {
   color: green;
 }
 
-Log .yellow {
+#yellow {
   color: yellow;
 }
 

@@ -2,6 +2,9 @@ import json
 import shutil
 import requests
 import traceback
+import sys
+
+from pathlib import Path
 from PIL import Image
 from pathlib import Path
 from tkinter import Tk, filedialog
@@ -13,8 +16,13 @@ from textual.containers import Vertical, Horizontal
 from textual.reactive import reactive
 from textual_imageview.viewer import ImageViewer
 
+def resource_path(relative_path: str) -> Path:
+    if hasattr(sys, "_MEIPASS"):
+        return Path(sys._MEIPASS) / relative_path
+    return Path(relative_path)
+
 class ChasmPackager(App):
-  CSS_PATH = "styles.tcss"
+  CSS_PATH = resource_path("styles.tcss")
 
   json_path = reactive("")
   save_path = reactive("")
@@ -35,7 +43,9 @@ class ChasmPackager(App):
         yield Label(" ")
         yield Label(" ")
         yield Label("🔶 ChasmPackager v1.0.0 - By Alkey\n🔶 오류나 추가 기능 문의가 있다면 Discord: crk_alkey로 문의 부탁드려요!", id="green")
-        yield ImageViewer(Image.open(Path("chibialkey.png")))
+        yield Label(" ")
+        yield Label("🔷 (Ctrl + Q)를 누르면 프로그램을 종료해요.", id="yellow")
+        yield ImageViewer(Image.open(resource_path("chibialkey.png")))
       yield Log(id="log-box")
     yield Footer()
 

@@ -1,0 +1,5 @@
+requests>=2.31.0
+Pillow>=10.0.0
+textual>=0.44.0
+textual-imageview>=0.1.0
+rich>=13.0.0
