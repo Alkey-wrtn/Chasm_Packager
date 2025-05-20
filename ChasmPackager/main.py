@@ -42,7 +42,7 @@ class ChasmPackager(App):
         yield Button("✅ 실행", id="run-btn", variant="success")
         yield Label(" ")
         yield Label(" ")
-        yield Label("🔶 ChasmPackager v1.0.0 - By Alkey\n🔶 오류나 추가 기능 문의가 있다면 Discord: crk_alkey로 문의 부탁드려요!", id="green")
+        yield Label("🔶 ChasmPackager v1.0.1 - By Alkey\n🔶 오류나 추가 기능 문의가 있다면 Discord: crk_alkey로 문의 부탁드려요!", id="green")
         yield Label(" ")
         yield Label("🔷 (Ctrl + Q)를 누르면 프로그램을 종료해요.", id="yellow")
         yield ImageViewer(Image.open(resource_path("chibialkey.png")))
@@ -126,8 +126,15 @@ class ChasmPackager(App):
       write(base_dir / "1. 설명.txt", data.get("description", ""), "설명")
       
       # 2. 프롬프트 저장
-      prompt = data.get("characterDetails") or data.get("customPrompt", "")
-      write(base_dir / "2. 프롬프트.txt", prompt, "프롬프트")
+      character_details = data.get("characterDetails")
+      custom_prompt = data.get("customPrompt", "")
+
+      if character_details and custom_prompt:
+        write(base_dir / "2. 기본 프롬프트.txt", character_details, "기본 프롬프트")
+        write(base_dir / "2. 커스텀 프롬프트.txt", custom_prompt, "커스텀 프롬프트")
+      else:
+        prompt = character_details or custom_prompt or ""
+        write(base_dir / "2. 프롬프트.txt", prompt, "프롬프트")
 
       # 3. 대화상황 저장
       init = data.get("initialMessages", [])
