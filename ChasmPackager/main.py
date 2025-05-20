@@ -18,7 +18,7 @@ from textual_imageview.viewer import ImageViewer
 
 def resource_path(relative_path: str) -> Path:
     if hasattr(sys, "_MEIPASS"):
-        return Path(sys._MEIPASS) / relative_path
+        return Path(sys._MEIPASS) / relative_path # type: ignore
     return Path(relative_path)
 
 class ChasmPackager(App):
