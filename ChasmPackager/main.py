@@ -42,7 +42,7 @@ class ChasmPackager(App):
         yield Button("✅ 실행", id="run-btn", variant="success")
         yield Label(" ")
         yield Label(" ")
-        yield Label("🔶 ChasmPackager v1.0.1 - By Alkey\n🔶 오류나 추가 기능 문의가 있다면 Discord: crk_alkey로 문의 부탁드려요!", id="green")
+        yield Label("🔶 ChasmPackager v1.2.0 - By Alkey\n🔶 오류나 추가 기능 문의가 있다면 Discord: crk_alkey로 문의 부탁드려요!", id="green")
         yield Label(" ")
         yield Label("🔷 (Ctrl + Q)를 누르면 프로그램을 종료해요.", id="yellow")
         yield ImageViewer(Image.open(resource_path("chibialkey.png")))
@@ -122,55 +122,10 @@ class ChasmPackager(App):
         path.write_text(content, encoding="utf-8")
         l(f"✅ {label} 저장: {path.name}")
 
-      # 1. 설명 저장
-      write(base_dir / "1. 설명.txt", data.get("description", ""), "설명")
-      
-      # 2. 프롬프트 저장
-      character_details = data.get("characterDetails")
-      custom_prompt = data.get("customPrompt", "")
-
-      if character_details and custom_prompt:
-        write(base_dir / "2. 기본 프롬프트.txt", character_details, "기본 프롬프트")
-        write(base_dir / "2. 커스텀 프롬프트.txt", custom_prompt, "커스텀 프롬프트")
-      else:
-        prompt = character_details or custom_prompt or ""
-        write(base_dir / "2. 프롬프트.txt", prompt, "프롬프트")
-
-      # 3. 대화상황 저장
-      init = data.get("initialMessages", [])
-      default = data.get("defaultStartingSetSituationPrompt", "")
-      replies = data.get("replySuggestions", [])
-      dialogues_dir = base_dir / "대화상황"
-      dialogues_dir.mkdir(exist_ok=True)
-
-      if init:
-          d1 = dialogues_dir / "대화상황1"
-          d1.mkdir(exist_ok=True)
-          write(d1 / "대화상황프롬프트.txt", "\n\n".join(init), "대화상황1 메시지")
-          write(d1 / "시작상황프롬프트.txt", default, "대화상황1 시작")
-          write(d1 / "예시대화프롬프트.txt", "\n".join(replies), "대화상황1 예시")
-
-      for idx, st in enumerate(data.get("startingSets", [])[:2], start=2):
-          d = dialogues_dir / f"대화상황{idx}"
-          d.mkdir(exist_ok=True)
-          msgs = st.get("initialMessages", [])
-          write(d / "대화상황프롬프트.txt", "\n\n".join(msgs), f"대화상황{idx} 메시지")
-          write(d / "시작상황프롬프트.txt", st.get("situationPrompt", default), f"대화상황{idx} 시작")
-          write(d / "예시대화프롬프트.txt", "\n".join(st.get("replySuggestions", replies)), f"대화상황{idx} 예시")
-
-      # 4. chatExamples (대화 예시 저장)
-      if data.get("chatExamples"):
-        ex_dir = base_dir / "대화예시"; ex_dir.mkdir(exist_ok=True)
-        for i, ex in enumerate(data["chatExamples"], 1):
-          lines = []
-          if ex.get("user"): lines += ["[유저 프롬프트]", ex["user"]]
-          if ex.get("character"): lines += ["", "[캐릭터 프롬프트]", ex["character"]]
-          write(ex_dir / f"대화예시_{i}.txt", "\n".join(lines), f"대화예시{i}")
-
-      # 5. keywordBook (키워드북 내용 및 키워드 저장)
-      if data.get("keywordBook"):
-        kb_dir = base_dir / "키워드북"; kb_dir.mkdir(exist_ok=True)
-        for grp in data["keywordBook"]:
+      def save_keyword_book_helper(kb_data, target_dir):
+        if not kb_data: return
+        kb_dir = target_dir / "키워드북"; kb_dir.mkdir(exist_ok=True)
+        for grp in kb_data:
           nm = grp.get("name", "키워드북")
           safe = "".join(c if c not in r'\\/:*?"<>|' else "_" for c in nm)
           kws = grp.get("keywords", [])
@@ -180,25 +135,39 @@ class ChasmPackager(App):
           if pr: lines += ["", "[설명]", pr]
           write(kb_dir / f"{safe}.txt", "\n".join(lines), f"키워드북 '{nm}'")
 
-      # 6. situationImages (상황별 이미지 저장)
-      if data.get("situationImages"):
-        img_dir = base_dir / "상황별 이미지"
+      def save_situation_images_helper(si_data, target_dir):
+        if not si_data: return
+        img_dir = target_dir / "상황별 이미지"
         imgs = img_dir / "imgs"
         img_dir.mkdir(exist_ok=True); imgs.mkdir(exist_ok=True)
         info = []
-        for i, img in enumerate(data["situationImages"], 1):
+        for i, img in enumerate(si_data, 1):
           url = img.get("imageUrl", "")
           kw = img.get("keyword", f"image_{i}")
           sit = img.get("situation", "")
+          if not url: continue
           ext = url.split('.')[-1].split('?')[0]
           p = imgs / f"{kw}.{ext}"
           try:
             r = requests.get(url, timeout=10); r.raise_for_status(); p.write_bytes(r.content)
-            l(f"🖼️ 이미지 다운로드 완료: {kw}")
+            l(f"🖼️  이미지 다운로드 완료: {kw}")
           except Exception as e:
-            l(f"⚠️ 이미지 다운로드 실패: {url} ({e})", "yellow")
+            l(f"⚠️  이미지 다운로드 실패: {url} ({e})", "yellow")
           info.append(f"{kw}\t{sit}")
         write(img_dir / "이미지_정보목록.txt", "\n".join(info), "이미지 정보 목록")
+
+      # 1. 설명 저장
+      write(base_dir / "1. 설명.txt", data.get("description", ""), "설명")
+      
+      # 2. 프롬프트 저장
+      character_details = data.get("characterDetails")
+      custom_prompt = data.get("customPrompt", "")
+      if character_details and custom_prompt:
+        write(base_dir / "2. 기본 프롬프트.txt", character_details, "기본 프롬프트")
+        write(base_dir / "2. 커스텀 프롬프트.txt", custom_prompt, "커스텀 프롬프트")
+      else:
+        prompt = character_details or custom_prompt or ""
+        write(base_dir / "2. 프롬프트.txt", prompt, "프롬프트")
 
       # 7. profileImage (커버 이미지 저장)
       prof = data.get("profileImage")
@@ -206,13 +175,75 @@ class ChasmPackager(App):
       if url:
         try:
           r = requests.get(url, timeout=10); r.raise_for_status(); (base_dir / "0. 커버_이미지.png").write_bytes(r.content)
-          l("🖼️ 프로필 이미지 저장 완료")
+          l("🖼️  프로필 이미지 저장 완료")
         except Exception as e:
-          l(f"⚠️ 프로필 이미지 실패: {e}", "yellow")
+          l(f"⚠️  프로필 이미지 실패: {e}", "yellow")
 
       # 8. tags (태그 저장)
       if data.get("tags"):
         write(base_dir / "3. 태그.txt", "\n".join(data["tags"]), "태그")
+
+      # JSON 포맷 감지
+      is_new_format = "defaultStartingSetSituationPrompt" not in data and "startingSets" in data
+
+      if is_new_format:
+        l("🟢 새로운 JSON 포맷 감지. 각 대화상황별로 리소스를 저장합니다.")
+        dialogues_dir = base_dir / "대화상황"
+        dialogues_dir.mkdir(exist_ok=True)
+
+        for idx, st in enumerate(data.get("startingSets", []), start=1):
+          d = dialogues_dir / f"대화상황{idx}"
+          d.mkdir(exist_ok=True)
+          
+          msgs = st.get("initialMessages", [])
+          write(d / "대화상황프롬프트.txt", "\n\n".join(msgs), f"대화상황{idx} 메시지")
+          write(d / "시작상황프롬프트.txt", st.get("situationPrompt", ""), f"대화상황{idx} 시작")
+          write(d / "예시대화프롬프트.txt", "\n".join(st.get("replySuggestions", [])), f"대화상황{idx} 예시")
+
+          if st.get("keywordBook"):
+            save_keyword_book_helper(st.get("keywordBook"), d)
+          if st.get("situationImages"):
+            save_situation_images_helper(st.get("situationImages"), d)
+      else:
+        l("🟡 기존 JSON 포맷 감지. 리소스를 최상위 폴더에 저장합니다.")
+        # 3. 대화상황 저장 (기존 방식)
+        init = data.get("initialMessages", [])
+        default = data.get("defaultStartingSetSituationPrompt", "")
+        replies = data.get("replySuggestions", [])
+        dialogues_dir = base_dir / "대화상황"
+        dialogues_dir.mkdir(exist_ok=True)
+
+        if init:
+            d1 = dialogues_dir / "대화상황1"
+            d1.mkdir(exist_ok=True)
+            write(d1 / "대화상황프롬프트.txt", "\n\n".join(init), "대화상황1 메시지")
+            write(d1 / "시작상황프롬프트.txt", default, "대화상황1 시작")
+            write(d1 / "예시대화프롬프트.txt", "\n".join(replies), "대화상황1 예시")
+
+        for idx, st in enumerate(data.get("startingSets", [])[:2], start=2):
+            d = dialogues_dir / f"대화상황{idx}"
+            d.mkdir(exist_ok=True)
+            msgs = st.get("initialMessages", [])
+            write(d / "대화상황프롬프트.txt", "\n\n".join(msgs), f"대화상황{idx} 메시지")
+            write(d / "시작상황프롬프트.txt", st.get("situationPrompt", default), f"대화상황{idx} 시작")
+            write(d / "예시대화프롬프트.txt", "\n".join(st.get("replySuggestions", replies)), f"대화상황{idx} 예시")
+
+        # 5. keywordBook (키워드북 내용 및 키워드 저장)
+        if data.get("keywordBook"):
+          save_keyword_book_helper(data.get("keywordBook"), base_dir)
+
+        # 6. situationImages (상황별 이미지 저장)
+        if data.get("situationImages"):
+          save_situation_images_helper(data.get("situationImages"), base_dir)
+
+      # 4. chatExamples (대화 예시 저장) - 공통
+      if data.get("chatExamples"):
+        ex_dir = base_dir / "대화예시"; ex_dir.mkdir(exist_ok=True)
+        for i, ex in enumerate(data["chatExamples"], 1):
+          lines = []
+          if ex.get("user"): lines += ["[유저 프롬프트]", ex["user"]]
+          if ex.get("character"): lines += ["", "[캐릭터 프롬프트]", ex["character"]]
+          write(ex_dir / f"대화예시_{i}.txt", "\n".join(lines), f"대화예시{i}")
 
       l(f"🎉 완료! 폴더 생성 위치: {base_dir}")
     except Exception:
