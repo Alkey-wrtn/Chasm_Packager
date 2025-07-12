@@ -42,7 +42,7 @@ class ChasmPackager(App):
         yield Button("✅ 실행", id="run-btn", variant="success")
         yield Label(" ")
         yield Label(" ")
-        yield Label("🔶 ChasmPackager v1.2.0 - By Alkey\n🔶 오류나 추가 기능 문의가 있다면 Discord: crk_alkey로 문의 부탁드려요!", id="green")
+        yield Label("🔶 ChasmPackager v1.1.0 - By Alkey\n🔶 오류나 추가 기능 문의가 있다면 Discord: crk_alkey로 문의 부탁드려요!", id="green")
         yield Label(" ")
         yield Label("🔷 (Ctrl + Q)를 누르면 프로그램을 종료해요.", id="yellow")
         yield ImageViewer(Image.open(resource_path("chibialkey.png")))
